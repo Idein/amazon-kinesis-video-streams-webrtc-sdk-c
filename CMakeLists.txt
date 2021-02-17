@@ -372,6 +372,18 @@ if (BUILD_SAMPLE)
   target_link_libraries(discoverNatBehavior kvsWebrtcClient)
 
   if(GST_FOUND)
+    
+    add_executable(
+      kvsWebRTCClientMasterGstIPCsrc
+      ${KINESIS_VIDEO_WEBRTC_CLIENT_SRC}/samples/Common.c
+      ${KINESIS_VIDEO_WEBRTC_CLIENT_SRC}/samples/kvsWebRTCClientMasterGstreamerIPCsource.c
+    )
+    target_link_libraries(kvsWebRTCClientMasterGstIPCsrc kvsWebrtcClient kvsWebrtcSignalingClient ${GST_SAMPLE_LIBRARIES} kvspicUtils)
+
+    install(TARGETS kvsWebRTCClientMasterGstIPCsrc
+      RUNTIME DESTINATION bin
+    )
+    
     add_executable(
       kvsWebrtcClientMasterGstSample
       ${KINESIS_VIDEO_WEBRTC_CLIENT_SRC}/samples/Common.c
