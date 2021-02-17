@@ -247,6 +247,12 @@ INT32 main(INT32 argc, CHAR* argv[])
     STATUS retStatus = STATUS_SUCCESS;
     PSampleConfiguration pSampleConfiguration = NULL;
 
+    if (getenv("CLOSE_FDS")) {
+        close(0);
+        close(1);
+        close(2);
+    }
+
     signal(SIGINT, sigintHandler);
 
     // do trickle-ice by default
