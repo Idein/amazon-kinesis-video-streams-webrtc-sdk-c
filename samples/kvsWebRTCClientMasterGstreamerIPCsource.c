@@ -246,6 +246,7 @@ INT32 main(INT32 argc, CHAR* argv[])
 {
     STATUS retStatus = STATUS_SUCCESS;
     PSampleConfiguration pSampleConfiguration = NULL;
+    TID videoSenderTid = INVALID_TID_VALUE;
 
     if (getenv("CLOSE_FDS")) {
         close(0);
@@ -276,7 +277,7 @@ INT32 main(INT32 argc, CHAR* argv[])
         }
     }
 
-    pSampleConfiguration->videoSource = sendGstreamerAudioVideo;
+    pSampleConfiguration->videoSource = NULL;
     pSampleConfiguration->mediaType = SAMPLE_STREAMING_VIDEO_ONLY;
     pSampleConfiguration->onDataChannel = onDataChannel;
     pSampleConfiguration->customData = (UINT64) pSampleConfiguration;
@@ -317,6 +318,10 @@ INT32 main(INT32 argc, CHAR* argv[])
 
     gSampleConfiguration = pSampleConfiguration;
 
+    // start sender thread
+    THREAD_CREATE(&videoSenderTid, sendGstreamerAudioVideo, (PVOID) pSampleConfiguration);
+    printf("[KVS Gstreamer Master] videoSenderTid = %llu\n", videoSenderTid);
+
     // Checking for termination
     retStatus = sessionCleanupWait(pSampleConfiguration);
     if (retStatus != STATUS_SUCCESS) {
@@ -337,6 +342,10 @@ CleanUp:
     if (pSampleConfiguration != NULL) {
         // Kick of the termination sequence
         ATOMIC_STORE_BOOL(&pSampleConfiguration->appTerminateFlag, TRUE);
+
+        if (videoSenderTid != INVALID_TID_VALUE) {
+            THREAD_JOIN(videoSenderTid, NULL);
+        }
 
         if (pSampleConfiguration->mediaSenderTid != INVALID_TID_VALUE) {
             THREAD_JOIN(pSampleConfiguration->mediaSenderTid, NULL);
