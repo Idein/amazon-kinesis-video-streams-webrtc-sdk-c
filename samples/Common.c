@@ -621,7 +621,7 @@ STATUS createSampleConfiguration(PCHAR channelName, SIGNALING_CHANNEL_ROLE_TYPE 
                                  PSampleConfiguration* ppSampleConfiguration)
 {
     STATUS retStatus = STATUS_SUCCESS;
-    PCHAR pAccessKey, pSecretKey, pSessionToken, pLogLevel;
+    PCHAR pAccessKey, pSecretKey, pSessionToken, pLogLevel, pCredentialPath;
     PSampleConfiguration pSampleConfiguration = NULL;
     UINT32 logLevel = LOG_LEVEL_DEBUG;
 
@@ -629,9 +629,14 @@ STATUS createSampleConfiguration(PCHAR channelName, SIGNALING_CHANNEL_ROLE_TYPE 
 
     CHK(NULL != (pSampleConfiguration = (PSampleConfiguration) MEMCALLOC(1, SIZEOF(SampleConfiguration))), STATUS_NOT_ENOUGH_MEMORY);
 
-    CHK_ERR((pAccessKey = getenv(ACCESS_KEY_ENV_VAR)) != NULL, STATUS_INVALID_OPERATION, "AWS_ACCESS_KEY_ID must be set");
-    CHK_ERR((pSecretKey = getenv(SECRET_KEY_ENV_VAR)) != NULL, STATUS_INVALID_OPERATION, "AWS_SECRET_ACCESS_KEY must be set");
+    pAccessKey = getenv(ACCESS_KEY_ENV_VAR);
+    pSecretKey = getenv(SECRET_KEY_ENV_VAR);
     pSessionToken = getenv(SESSION_TOKEN_ENV_VAR);
+    pCredentialPath = getenv("AWS_CREDENTIAL_PATH");
+    CHK_ERR(((pAccessKey != NULL) && (pSecretKey != NULL)) || (pCredentialPath != NULL),
+            STATUS_INVALID_OPERATION,
+            "{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY} or {AWS_CREDENTIAL_PATH} must be set");
+
     pSampleConfiguration->enableFileLogging = FALSE;
     if (NULL != getenv(ENABLE_FILE_LOGGING)) {
         pSampleConfiguration->enableFileLogging = TRUE;
@@ -650,8 +655,13 @@ STATUS createSampleConfiguration(PCHAR channelName, SIGNALING_CHANNEL_ROLE_TYPE 
 
     SET_LOGGER_LOG_LEVEL(logLevel);
 
-    CHK_STATUS(
-        createStaticCredentialProvider(pAccessKey, 0, pSecretKey, 0, pSessionToken, 0, MAX_UINT64, &pSampleConfiguration->pCredentialProvider));
+    if ((pAccessKey != NULL) && (pSecretKey != NULL)) {
+        CHK_STATUS(
+            createStaticCredentialProvider(pAccessKey, 0, pSecretKey, 0, pSessionToken, 0, MAX_UINT64, &pSampleConfiguration->pCredentialProvider));
+    } else {
+        CHK_STATUS(
+            createFileCredentialProvider(pCredentialPath, &pSampleConfiguration->pCredentialProvider));
+    }
 
     pSampleConfiguration->mediaSenderTid = INVALID_TID_VALUE;
     pSampleConfiguration->signalingClientHandle = INVALID_SIGNALING_CLIENT_HANDLE_VALUE;
